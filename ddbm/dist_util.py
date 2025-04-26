@@ -12,7 +12,7 @@ import torch.distributed as dist
 
 SETUP_RETRY_COUNT = 3
 
-def setup_dist():
+def setup_dist(devices=[0]):
     """
     Setup a distributed process group.
     """
@@ -24,15 +24,20 @@ def setup_dist():
     if "MASTER_PORT" not in os.environ:
         os.environ["MASTER_PORT"] = str(_find_free_port())
     os.environ.setdefault("RANK", "0")
-    os.environ.setdefault("WORLD_SIZE", "1")
-
     rank = int(os.environ["RANK"])
+    os.environ.setdefault("WORLD_SIZE", "1")
+    world_size = len(devices) % th.cuda.device_count()
+    os.environ["WORLD_SIZE"] = str(world_size)
+
     world_size = int(os.environ["WORLD_SIZE"])
     backend = "gloo" if not th.cuda.is_available() else "nccl"
 
     if th.cuda.is_available():
-        th.cuda.set_device(rank % th.cuda.device_count())
+        # th.cuda.set_device(rank % th.cuda.device_count())
+        device_num = devices[rank % len(devices)] % th.cuda.device_count()
+        th.cuda.set_device(device_num)
 
+    print(f"started init with world_size={world_size}")
     dist.init_process_group(
         backend=backend,
         init_method="env://",
