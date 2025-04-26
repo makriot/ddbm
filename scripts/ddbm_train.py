@@ -32,7 +32,7 @@ def main(args):
     workdir = get_workdir(args.exp)
     Path(workdir).mkdir(parents=True, exist_ok=True)
     
-    dist_util.setup_dist()
+    # dist_util.setup_dist()
     logger.configure(dir=workdir)
     if dist.get_rank() == 0:
         name = args.exp if args.resume_checkpoint == "" else args.exp + '_resume'

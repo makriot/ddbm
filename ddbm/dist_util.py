@@ -8,15 +8,9 @@ import socket
 
 import blobfile as bf
 import torch as th
-from mpi4py import MPI #not sure why this needs to be set after torch
 import torch.distributed as dist
 
-# Change this to reflect your cluster layout.
-# The GPU for a given rank is (rank % GPUS_PER_NODE).
-GPUS_PER_NODE = MPI.COMM_WORLD.Get_size()
-
 SETUP_RETRY_COUNT = 3
-
 
 def setup_dist():
     """
@@ -24,26 +18,27 @@ def setup_dist():
     """
     if dist.is_initialized():
         return
-    # os.environ["CUDA_VISIBLE_DEVICES"] = f"{MPI.COMM_WORLD.Get_rank() % GPUS_PER_NODE}"
     
-    th.cuda.set_device(MPI.COMM_WORLD.Get_rank())
-    # print(GPUS_PER_NODE)
-    comm = MPI.COMM_WORLD
+    # Set default environment variables
+    os.environ.setdefault("MASTER_ADDR", "localhost")
+    if "MASTER_PORT" not in os.environ:
+        os.environ["MASTER_PORT"] = str(_find_free_port())
+    os.environ.setdefault("RANK", "0")
+    os.environ.setdefault("WORLD_SIZE", "1")
+
+    rank = int(os.environ["RANK"])
+    world_size = int(os.environ["WORLD_SIZE"])
     backend = "gloo" if not th.cuda.is_available() else "nccl"
 
-    if backend == "gloo":
-        hostname = "localhost"
-    else:
-        hostname = '127.0.0.1'#socket.gethostbyname(socket.getfqdn())
-    os.environ["MASTER_ADDR"] = comm.bcast(hostname, root=0)
-    os.environ["RANK"] = str(comm.rank)
-    os.environ["WORLD_SIZE"] = str(comm.size)
+    if th.cuda.is_available():
+        th.cuda.set_device(rank % th.cuda.device_count())
 
-    port = comm.bcast(_find_free_port(), root=0)
-    os.environ["MASTER_PORT"] = str(port)
-    
-    dist.init_process_group(backend=backend, init_method="env://")
-
+    dist.init_process_group(
+        backend=backend,
+        init_method="env://",
+        rank=rank,
+        world_size=world_size,
+    )
 
 def dev():
     """
@@ -53,29 +48,54 @@ def dev():
         return th.device("cuda")
     return th.device("cpu")
 
-
 def load_state_dict(path, **kwargs):
     """
-    Load a PyTorch file without redundant fetches across MPI ranks.
+    Load a PyTorch file synchronously across processes.
     """
-    chunk_size = 2**30  # MPI has a relatively small size limit
-    if MPI.COMM_WORLD.Get_rank() == 0:
+    if dist.is_initialized():
+        return _distributed_load(path, **kwargs)
+    else:
+        return _local_load(path, **kwargs)
+
+def _distributed_load(path, **kwargs):
+    chunk_size = 2**30  # 1GB chunks
+    rank = dist.get_rank()
+    
+    if rank == 0:
         with bf.BlobFile(path, "rb") as f:
             data = f.read()
-        num_chunks = len(data) // chunk_size
-        if len(data) % chunk_size:
-            num_chunks += 1
-        MPI.COMM_WORLD.bcast(num_chunks)
-        for i in range(0, len(data), chunk_size):
-            MPI.COMM_WORLD.bcast(data[i : i + chunk_size])
+        num_chunks = (len(data) + chunk_size - 1) // chunk_size
+        num_chunks_tensor = th.tensor([num_chunks], dtype=th.long)
+        dist.broadcast(num_chunks_tensor, 0)
+        
+        for i in range(num_chunks):
+            start = i * chunk_size
+            end = start + chunk_size
+            chunk = data[start:end]
+            chunk_len = th.tensor([len(chunk)], dtype=th.long)
+            dist.broadcast(chunk_len, 0)
+            chunk_tensor = th.ByteTensor(bytearray(chunk))
+            dist.broadcast(chunk_tensor, 0)
     else:
-        num_chunks = MPI.COMM_WORLD.bcast(None)
-        data = bytes()
+        num_chunks_tensor = th.tensor([0], dtype=th.long)
+        dist.broadcast(num_chunks_tensor, 0)
+        num_chunks = num_chunks_tensor.item()
+        data = bytearray()
+        
         for _ in range(num_chunks):
-            data += MPI.COMM_WORLD.bcast(None)
-
+            chunk_len = th.tensor([0], dtype=th.long)
+            dist.broadcast(chunk_len, 0)
+            chunk_tensor = th.ByteTensor(chunk_len.item())
+            dist.broadcast(chunk_tensor, 0)
+            chunk = bytes(chunk_tensor.numpy().tobytes()[:chunk_len.item()])
+            data += chunk
+    
     return th.load(io.BytesIO(data), **kwargs)
 
+def _local_load(path, **kwargs):
+    with bf.BlobFile(path, "rb") as f:
+        data = f.read()
+    return th.load(io.BytesIO(data), **kwargs)
 
 def sync_params(params):
     """
@@ -84,7 +104,6 @@ def sync_params(params):
     for p in params:
         with th.no_grad():
             dist.broadcast(p, 0)
-
 
 def _find_free_port():
     try:
