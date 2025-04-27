@@ -86,35 +86,35 @@ def setup_dist():
 def dev():
     return th.device(f"cuda:{os.environ['LOCAL_RANK']}" if th.cuda.is_available() else "cpu")
 
-def load_state_dict(path, **kwargs):
-    rank = dist.get_rank()
-    chunk_size = 2**30  # 1GB
+# def load_state_dict(path, **kwargs):
+#     rank = dist.get_rank()
+#     chunk_size = 2**30  # 1GB
 
-    if rank == 0:
-        with open(path, "rb") as f:
-            data = f.read()
-        num_chunks = (len(data) + chunk_size - 1) // chunk_size
-        num_chunks_tensor = th.tensor(num_chunks, dtype=th.int)
-        dist.broadcast(num_chunks_tensor, 0)
+#     if rank == 0:
+#         with open(path, "rb") as f:
+#             data = f.read()
+#         num_chunks = (len(data) + chunk_size - 1) // chunk_size
+#         num_chunks_tensor = th.tensor(num_chunks, dtype=th.int)
+#         dist.broadcast(num_chunks_tensor, 0)
         
-        for i in range(num_chunks):
-            start = i * chunk_size
-            end = start + chunk_size
-            chunk = data[start:end]
-            chunk_tensor = th.ByteTensor(bytearray(chunk))
-            dist.broadcast(chunk_tensor, 0)
-    else:
-        num_chunks_tensor = th.tensor(0, dtype=th.int)
-        dist.broadcast(num_chunks_tensor, 0)
-        num_chunks = num_chunks_tensor.item()
-        data = bytearray()
+#         for i in range(num_chunks):
+#             start = i * chunk_size
+#             end = start + chunk_size
+#             chunk = data[start:end]
+#             chunk_tensor = th.ByteTensor(bytearray(chunk))
+#             dist.broadcast(chunk_tensor, 0)
+#     else:
+#         num_chunks_tensor = th.tensor(0, dtype=th.int)
+#         dist.broadcast(num_chunks_tensor, 0)
+#         num_chunks = num_chunks_tensor.item()
+#         data = bytearray()
         
-        for _ in range(num_chunks):
-            chunk_tensor = th.ByteTensor(chunk_size)
-            dist.broadcast(chunk_tensor, 0)
-            data += bytes(chunk_tensor.numpy())
+#         for _ in range(num_chunks):
+#             chunk_tensor = th.ByteTensor(chunk_size)
+#             dist.broadcast(chunk_tensor, 0)
+#             data += bytes(chunk_tensor.numpy())
 
-    return th.load(io.BytesIO(data), **kwargs)
+#     return th.load(io.BytesIO(data), **kwargs)
 
 def _find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -122,48 +122,77 @@ def _find_free_port():
         return s.getsockname()[1]
 
 
-# def load_state_dict(path, **kwargs):
-#     """
-#     Load a PyTorch file synchronously across processes.
-#     """
-#     if dist.is_initialized():
-#         return _distributed_load(path, **kwargs)
-#     else:
-#         return _local_load(path, **kwargs)
+def load_state_dict(path, **kwargs):
+    """
+    Load a PyTorch file synchronously across processes.
+    """
+    if dist.is_initialized():
+        return _distributed_load(path, **kwargs)
+    else:
+        return _local_load(path, **kwargs)
 
 def _distributed_load(path, **kwargs):
-    chunk_size = 2**30  # 1GB chunks
-    rank = dist.get_rank()
+    # chunk_size = 2**30  # 1GB chunks
+    # rank = dist.get_rank()
     
+    # if rank == 0:
+    #     with bf.BlobFile(path, "rb") as f:
+    #         data = f.read()
+    #     num_chunks = (len(data) + chunk_size - 1) // chunk_size
+    #     num_chunks_tensor = th.tensor([num_chunks], dtype=th.long)
+    #     dist.broadcast(num_chunks_tensor, 0)
+        
+    #     for i in range(num_chunks):
+    #         start = i * chunk_size
+    #         end = start + chunk_size
+    #         chunk = data[start:end]
+    #         chunk_len = th.tensor([len(chunk)], dtype=th.long)
+    #         dist.broadcast(chunk_len, 0)
+    #         chunk_tensor = th.ByteTensor(bytearray(chunk))
+    #         dist.broadcast(chunk_tensor, 0)
+    # else:
+    #     num_chunks_tensor = th.tensor([0], dtype=th.long)
+    #     dist.broadcast(num_chunks_tensor, 0)
+    #     num_chunks = num_chunks_tensor.item()
+    #     data = bytearray()
+        
+    #     for _ in range(num_chunks):
+    #         chunk_len = th.tensor([0], dtype=th.long)
+    #         dist.broadcast(chunk_len, 0)
+    #         chunk_tensor = th.ByteTensor(chunk_len.item())
+    #         dist.broadcast(chunk_tensor, 0)
+    #         chunk = bytes(chunk_tensor.numpy().tobytes()[:chunk_len.item()])
+    #         data += chunk
+    
+    # return th.load(io.BytesIO(data), **kwargs)
+
+    rank = dist.get_rank()
+    chunk_size = 2**30  # 1GB
+
     if rank == 0:
-        with bf.BlobFile(path, "rb") as f:
+        with open(path, "rb") as f:
             data = f.read()
         num_chunks = (len(data) + chunk_size - 1) // chunk_size
-        num_chunks_tensor = th.tensor([num_chunks], dtype=th.long)
+        num_chunks_tensor = th.tensor(num_chunks, dtype=th.int, device=dev())
         dist.broadcast(num_chunks_tensor, 0)
         
         for i in range(num_chunks):
             start = i * chunk_size
             end = start + chunk_size
             chunk = data[start:end]
-            chunk_len = th.tensor([len(chunk)], dtype=th.long)
-            dist.broadcast(chunk_len, 0)
-            chunk_tensor = th.ByteTensor(bytearray(chunk))
+            chunk_tensor = th.ByteTensor(bytearray(chunk)).to(dev())
             dist.broadcast(chunk_tensor, 0)
     else:
-        num_chunks_tensor = th.tensor([0], dtype=th.long)
+        num_chunks_tensor = th.tensor(0, dtype=th.int, device=dev())
         dist.broadcast(num_chunks_tensor, 0)
         num_chunks = num_chunks_tensor.item()
         data = bytearray()
         
         for _ in range(num_chunks):
-            chunk_len = th.tensor([0], dtype=th.long)
-            dist.broadcast(chunk_len, 0)
-            chunk_tensor = th.ByteTensor(chunk_len.item())
+            chunk_tensor = th.ByteTensor(chunk_size, device=dev())
             dist.broadcast(chunk_tensor, 0)
-            chunk = bytes(chunk_tensor.numpy().tobytes()[:chunk_len.item()])
-            data += chunk
-    
+            data += bytes(chunk_tensor.cpu().numpy())
+
     return th.load(io.BytesIO(data), **kwargs)
 
 def _local_load(path, **kwargs):

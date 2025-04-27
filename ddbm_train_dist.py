@@ -146,7 +146,7 @@ def model_and_diffusion_defaults():
         image_size=64,
         in_channels=3,
         num_channels=64,
-        num_res_blocks=2,
+        num_res_blocks=1,
         num_heads=4,  # will be ignored if num_head_channels is set
         num_heads_upsample=-1,
         num_head_channels=32,  # -1 for simple attention (num_heads = [2, 4, 8, 16])
@@ -171,7 +171,7 @@ def model_and_diffusion_defaults():
 
 def create_argparser():
     defaults = dict(
-        exp='0',
+        exp='1',
         data_dir="data",
         dataset="cityscapes",
         schedule_sampler="uniform",
@@ -183,10 +183,10 @@ def create_argparser():
         microbatch=-1,  # -1 disables microbatches
         ema_rate="0.9999",  # comma-separated list of EMA values
         log_interval=50,
-        test_interval=500,
-        save_interval=10000,
-        save_interval_for_preemption=50000,
-        resume_checkpoint="",
+        test_interval=500,  # fake parameter
+        save_interval=2000,
+        save_interval_for_preemption=5000,
+        resume_checkpoint="workdir/1/model_010000.pt",
         use_fp16=True,  # False with simple attention
         fp16_scale_growth=1e-3,
         debug=False,
@@ -202,7 +202,6 @@ def create_argparser():
 
 
 if __name__ == "__main__":
-    print("ha")
     args = create_argparser().parse_args()
 
     train(args)

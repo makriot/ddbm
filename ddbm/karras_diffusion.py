@@ -222,7 +222,6 @@ def karras_sample(
     diffusion,
     model,
     x_T,
-    x_0,
     steps,
     clip_denoised=True,
     progress=False,
@@ -265,7 +264,7 @@ def karras_sample(
         guidance=guidance,
         **sampler_args,
     )
-    print('nfe:', nfe)
+    # print('nfe:', nfe)
 
     return x_0.clamp(-1, 1), [x.clamp(-1, 1) for x in path], nfe
 
@@ -369,7 +368,7 @@ def sample_heun(
         logsnr_T = logsnr(th.as_tensor(sigma_max))
         logs_T = logs(th.as_tensor(sigma_max))
     
-    for i in enumerate(indices):
+    for j, i in enumerate(indices):
         
         if churn_step_ratio > 0:
             # 1 step euler

@@ -49,8 +49,12 @@ def get_transforms(mean, std, img_size=256):
     ])
     
     def de_normalize(tensor, normalized=True):
-        tmp = tensor.cpu() * torch.from_numpy(std).reshape(3,1,1) + torch.from_numpy(mean).reshape(3,1,1)
-        return tmp.permute(1, 2, 0)
+        if len(tensor.shape) == 3:
+            tmp = tensor.cpu() * torch.from_numpy(std).reshape(3,1,1) + torch.from_numpy(mean).reshape(3,1,1)
+            return tmp.permute(1, 2, 0)
+        elif len(tensor.shape) == 4:
+            tmp = tensor.cpu() * torch.from_numpy(std).reshape(1,3,1,1) + torch.from_numpy(mean).reshape(1,3,1,1)
+            return tmp.permute(0, 2, 3, 1)
     
     return train_transform, test_transform, de_normalize
 
@@ -88,13 +92,14 @@ class ImagesDataset(Dataset):
 
 
 class PairedDataset(Dataset):
-    def __init__(self, root_dir, transform_a=None, transform_b=None, random_flip=False):
+    def __init__(self, root_dir, transform_a=None, transform_b=None, random_flip=False, order=False):
         super().__init__()
         self.root_dir = root_dir
         self.image_paths = [os.path.join(root_dir, f) for f in os.listdir(root_dir)]
         self.transform_a = transform_a
         self.transform_b = transform_b
         self.random_flip = random_flip
+        self.order = order
 
     def __getitem__(self, index):
         img_path = self.image_paths[index]
@@ -110,6 +115,8 @@ class PairedDataset(Dataset):
             image_a = flip(image_a)
             image_b = flip(image_b)
 
+        if self.order:
+            return image_b, image_a, index
         return image_a, image_b, index  # index is needed for sampling
 
     def __len__(self):
@@ -138,6 +145,7 @@ def load_data(
     include_test=False,
     seed=42,
     num_workers=2,
+    order=False,
 ):
     target_dir = os.path.join(data_dir, dataset)
 
@@ -159,11 +167,13 @@ def load_data(
         train = PairedDataset(os.path.join(target_dir, "train"),
                               transform_a=train_transform_a,
                               transform_b=train_transform_b,
-                              random_flip=True),
+                              random_flip=True,
+                              order=order),
         val = PairedDataset(os.path.join(target_dir, "val"),\
                             transform_a=test_transform_a,
                             transform_b=test_transform_b,
-                            random_flip=False),
+                            random_flip=False,
+                            order=order),
     )
 
     train_loader = DataLoader(
@@ -184,7 +194,8 @@ def load_data(
         ds_test = PairedDataset(os.path.join(target_dir, "test"),
                                 transform_a=train_transform_a,
                                 transform_b=train_transform_b,
-                                random_flip=False)
+                                random_flip=False,
+                                order=order)
 
         test_loader = DataLoader(
             dataset=ds_test, num_workers=num_workers, # pin_memory=True,
