@@ -225,7 +225,7 @@ class TrainLoop:
                     cond = {'xT': xT}
                 else:
                     cond['xT'] = self.preprocess(cond['xT'])
-                    
+
                 took_step = self.run_step(batch, cond)
                 if took_step and self.step % self.log_interval == 0:
                     logs = logger.dumpkvs()

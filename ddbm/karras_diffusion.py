@@ -16,7 +16,9 @@ from functools import partial
 
 def vp_logsnr(t, beta_d, beta_min):
     t = th.as_tensor(t)
-    return - th.log((0.5 * beta_d * (t ** 2) + beta_min * t).exp() - 1)
+    # print(((0.5 * beta_d * (t ** 2) + beta_min * t).exp() - 1))
+    tmp = - th.log((0.5 * beta_d * (t ** 2) + beta_min * t).exp() - 1 + 1e-12)
+    return tmp
     
 def vp_logs(t, beta_d, beta_min):
     t = th.as_tensor(t)
@@ -161,6 +163,7 @@ class KarrasDenoiser:
         dims = x_start.ndim
         def bridge_sample(x0, xT, t):
             t = append_dims(t, dims)
+
             # std_t = th.sqrt(t)* th.sqrt(1 - t / self.sigma_max)
             if self.pred_mode.startswith('ve'):
                 std_t = t* th.sqrt(1 - t**2 / self.sigma_max**2)
@@ -171,6 +174,11 @@ class KarrasDenoiser:
                 logsnr_T = vp_logsnr(self.sigma_max, self.beta_d, self.beta_min)
                 logs_t = vp_logs(t, self.beta_d, self.beta_min)
                 logs_T = vp_logs(self.sigma_max, self.beta_d, self.beta_min)
+                # print(self.sigma_max)
+                # print(th.isinf(logsnr_t).sum(), th.isinf(logsnr_T).sum(), th.isinf(logs_t).sum(), th.isinf(logs_T).sum())
+                # print("---")
+                # print(t.mean(), self.sigma_max)
+                # print("@@@")
 
                 a_t = (logsnr_T - logsnr_t +logs_t -logs_T).exp()
                 b_t = -th.expm1(logsnr_T - logsnr_t) * logs_t.exp()
@@ -307,7 +315,8 @@ def get_d_vp(x, denoised, x_T, std_t,logsnr_t, logsnr_T, logs_t, logs_T, s_t_der
     grad_logpxTlxt = -(x - th.exp(logs_t-logs_T)*x_T) /std_t**2  / th.expm1(logsnr_t - logsnr_T)
 
     f = s_t_deriv * (-logs_t).exp() * x
-    gt2 = 2 * (logs_t).exp()**2 * sigma_t * sigma_t_deriv 
+    # gt2 = 2 * (logs_t).exp()**2 * sigma_t * sigma_t_deriv 
+    gt2 = 2 * (-logs_t).exp()**2 * sigma_t * sigma_t_deriv 
     # breakpoint()
 
     d = f -  gt2 * ((0.5 if not stochastic else 1)* grad_logq - w * grad_logpxTlxt)
