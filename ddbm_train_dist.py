@@ -97,7 +97,8 @@ def train(args: dict):
     data, test_data, de_normalize_a, de_normalize_b = load_data(data_dir=args.data_dir, 
                                                                 dataset=args.dataset, 
                                                                 batch_size=batch_size, 
-                                                                image_size=args.image_size)
+                                                                image_size=args.image_size,
+                                                                order=args.order)
     
     if args.use_augment:
         augment = AugmentPipe(
@@ -171,7 +172,7 @@ def model_and_diffusion_defaults():
 
 def create_argparser():
     defaults = dict(
-        exp='1',
+        exp='2_real2cartoon',
         data_dir="data",
         dataset="cityscapes",
         schedule_sampler="uniform",
@@ -186,12 +187,13 @@ def create_argparser():
         test_interval=500,  # fake parameter
         save_interval=2000,
         save_interval_for_preemption=5000,
-        resume_checkpoint="workdir/1/model_010000.pt",
+        resume_checkpoint="",
         use_fp16=True,  # False with simple attention
         fp16_scale_growth=1e-3,
         debug=False,
         num_workers=2,
-        use_augment=False
+        use_augment=False,
+        order=True
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()

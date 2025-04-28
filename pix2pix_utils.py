@@ -38,6 +38,7 @@ def get_transforms(mean, std, img_size=256):
         tr.ToPILImage(),
         tr.Resize(img_size),
         tr.ToTensor(),
+        tr.Lambda(lambda x: x / 255.0),
         tr.Normalize(mean, std)
     ])
 
@@ -45,6 +46,7 @@ def get_transforms(mean, std, img_size=256):
         tr.ToPILImage(),
         tr.Resize(img_size),
         tr.ToTensor(),
+        tr.Lambda(lambda x: x / 255.0),
         tr.Normalize(mean, std)
     ])
     

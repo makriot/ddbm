@@ -38,8 +38,8 @@ def get_workdir(exp):
 
 def sample(args):
 
-    # if args.devices:
-    #     os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, args.devices))
+    if args.devices:
+        os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, args.devices))
 
     workdir = os.path.dirname(args.model_path)
 
@@ -100,11 +100,15 @@ def sample(args):
         dataloader = all_dataloaders[2]
     else:
         raise NotImplementedError
-    args.num_samples = len(dataloader.dataset)
+    # args.num_samples = len(dataloader.dataset)
 
 
     print("Sampling...")
+    cnt_samples = 0
     for i, data in tqdm(enumerate(dataloader), total=len(dataloader)):
+        if cnt_samples >= args.num_samples + args.batch_size:
+            break
+        cnt_samples += args.batch_size
         if i == len(dataloader):
             break
         
@@ -117,9 +121,7 @@ def sample(args):
         y0 = y0_image.to(dist_util.dev()) * 2 - 1
         model_kwargs = {'xT': y0}
         index = data[2].to(dist_util.dev())
-            
-            
-                
+
         sample, path, nfe = karras_sample(
             diffusion,
             model,
@@ -135,13 +137,14 @@ def sample(args):
             rho=args.rho,
             guidance=args.guidance
         )
-        
-
-        sample = de_normalize_a(sample).clamp(0, 255).to(th.uint8)
-        # sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
+        # sample = (sample + 1) / 2
+        sample = de_normalize_a(sample)
+        sample = sample * 255.0
+        sample = sample.clamp(0, 255).to(th.uint8)
+        # sample = (sample * 255).clamp(0, 255).to(th.uint8)
         # sample = sample.permute(0, 2, 3, 1)
         sample = sample.contiguous().to(dist_util.dev())
-        
+
         gathered_samples = [th.zeros(sample.shape, dtype=sample.dtype, device=sample.device) for _ in range(dist.get_world_size())]
         dist.all_gather(gathered_samples, sample)  # gather not supported with NCCL
         if index is not None:
@@ -163,7 +166,7 @@ def sample(args):
             
         all_images.append(gathered_samples.detach().cpu().numpy())
         
-        
+
     logger.log(f"created {len(all_images) * args.batch_size * dist.get_world_size()} samples")
         
 
@@ -222,22 +225,22 @@ def create_argparser():
         data_dir="data", ## only used in bridge
         dataset='cityscapes',
         clip_denoised=True,
-        num_samples=500,
-        batch_size=16,
+        num_samples=8,
+        batch_size=8,
         sampler="heun",
         split='train',  # val
         churn_step_ratio=0.33,  # 0.0
         rho=7.0,
         steps=40,
         model_path="./workdir/1/ema_0.9999_010000.pt",
-        exp="0",
+        exp="1",
         seed=42,
         ts="",
         upscale=False,
         num_workers=2,
         guidance=1.,
         dataset_order=False,
-        order=False
+        order=True
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
