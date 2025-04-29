@@ -38,16 +38,16 @@ def get_transforms(mean, std, img_size=256):
         tr.ToPILImage(),
         tr.Resize(img_size),
         tr.ToTensor(),
-        tr.Lambda(lambda x: x / 255.0),
-        tr.Normalize(mean, std)
+        # tr.Lambda(lambda x: x / 255.0),
+        # tr.Normalize(mean, std)
     ])
 
     test_transform = tr.Compose([
         tr.ToPILImage(),
         tr.Resize(img_size),
         tr.ToTensor(),
-        tr.Lambda(lambda x: x / 255.0),
-        tr.Normalize(mean, std)
+        # tr.Lambda(lambda x: x / 255.0),
+        # tr.Normalize(mean, std)
     ])
     
     def de_normalize(tensor, normalized=True):

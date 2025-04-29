@@ -172,9 +172,9 @@ def model_and_diffusion_defaults():
 
 def create_argparser():
     defaults = dict(
-        exp='2_real2cartoon',
+        exp='3_maps',
         data_dir="data",
-        dataset="cityscapes",
+        dataset="maps",
         schedule_sampler="uniform",
         lr=1e-4,
         weight_decay=0.0,
@@ -185,8 +185,8 @@ def create_argparser():
         ema_rate="0.9999",  # comma-separated list of EMA values
         log_interval=50,
         test_interval=500,  # fake parameter
-        save_interval=2000,
-        save_interval_for_preemption=5000,
+        save_interval=5000,
+        save_interval_for_preemption=10000,
         resume_checkpoint="",
         use_fp16=True,  # False with simple attention
         fp16_scale_growth=1e-3,

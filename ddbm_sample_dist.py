@@ -137,12 +137,15 @@ def sample(args):
             rho=args.rho,
             guidance=args.guidance
         )
-        # sample = (sample + 1) / 2
-        sample = de_normalize_a(sample)
+        # np_path = np.stack([p.cpu().numpy() for p in path])
+        # np.save(os.path.join(sample_dir, f"path.npz"), np_path)
+        # print(os.path.join(sample_dir, f"path.npz"))
+        sample = (sample + 1) / 2
+        # sample = de_normalize_a(sample)
         sample = sample * 255.0
         sample = sample.clamp(0, 255).to(th.uint8)
         # sample = (sample * 255).clamp(0, 255).to(th.uint8)
-        # sample = sample.permute(0, 2, 3, 1)
+        sample = sample.permute(0, 2, 3, 1)
         sample = sample.contiguous().to(dist_util.dev())
 
         gathered_samples = [th.zeros(sample.shape, dtype=sample.dtype, device=sample.device) for _ in range(dist.get_world_size())]
@@ -223,17 +226,17 @@ def model_and_diffusion_defaults():
 def create_argparser():
     defaults = dict(
         data_dir="data", ## only used in bridge
-        dataset='cityscapes',
+        dataset='maps',
         clip_denoised=True,
-        num_samples=8,
+        num_samples=50,
         batch_size=8,
         sampler="heun",
         split='train',  # val
         churn_step_ratio=0.33,  # 0.0
         rho=7.0,
         steps=40,
-        model_path="./workdir/1/ema_0.9999_010000.pt",
-        exp="1",
+        model_path="./workdir/3_maps/ema_0.9999_005000.pt",
+        exp="3_maps",
         seed=42,
         ts="",
         upscale=False,
