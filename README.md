@@ -6,7 +6,7 @@ Implementation of [Denoising Diffusion Bridge Models](https://arxiv.org/abs/2309
   <img src="assets/teaser.png" width="100%"/>
 </p>
 
-Goal of this project is to create core for future research projects based on bridge models.
+Goal of this project is to create the core for future research projects based on bridge models.
 
 Code is based on the official implementation: [ddbm](https://github.com/alexzhou907/DDBM) and have simplified interface in training and sampling using `torchrun` commands instead of `mpi`, and also enables training and sampling on custom pairwise datasets.
 
