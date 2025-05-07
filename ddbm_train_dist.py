@@ -140,7 +140,7 @@ def model_and_diffusion_defaults():
     res = dict(
         sigma_data=0.5,
         sigma_min=0.0001,
-        sigma_max=1.0,
+        sigma_max=1.0,  # set to 80.0 for ve
         beta_d=2,
         beta_min=0.1,
         cov_xy=0.5**2 / 2,  # default: 0
@@ -172,9 +172,9 @@ def model_and_diffusion_defaults():
 
 def create_argparser():
     defaults = dict(
-        exp='3_maps',
+        exp='4_night2day',
         data_dir="data",
-        dataset="maps",
+        dataset="night2day",
         schedule_sampler="uniform",
         lr=1e-4,
         weight_decay=0.0,
@@ -185,8 +185,8 @@ def create_argparser():
         ema_rate="0.9999",  # comma-separated list of EMA values
         log_interval=50,
         test_interval=500,  # fake parameter
-        save_interval=5000,
-        save_interval_for_preemption=10000,
+        save_interval=2000,
+        save_interval_for_preemption=5000,
         resume_checkpoint="",
         use_fp16=True,  # False with simple attention
         fp16_scale_growth=1e-3,

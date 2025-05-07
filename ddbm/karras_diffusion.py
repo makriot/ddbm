@@ -239,7 +239,6 @@ def karras_sample(
     
     sigmas = get_sigmas_karras(steps, sigma_min, sigma_max-1e-4, rho, device=device)
 
-
     sample_fn = {
         "heun": partial(sample_heun, beta_d=diffusion.beta_d, beta_min=diffusion.beta_min),
     }[sampler]
@@ -367,9 +366,9 @@ def sample_heun(
 
         logsnr_T = logsnr(th.as_tensor(sigma_max))
         logs_T = logs(th.as_tensor(sigma_max))
-    
+
     for j, i in enumerate(indices):
-        
+
         if churn_step_ratio > 0:
             # 1 step euler
             sigma_hat = (sigmas[i+1] - sigmas[i]) * churn_step_ratio + sigmas[i]
@@ -379,7 +378,7 @@ def sample_heun(
                 d_1, gt2 = to_d(x, sigmas[i] , denoised, x_T, sigma_max,  w=guidance, stochastic=True)
             elif pred_mode.startswith('vp'):
                 d_1, gt2 = get_d_vp(x, denoised, x_T, std(sigmas[i]),logsnr(sigmas[i]), logsnr_T, logs(sigmas[i] ), logs_T, s_deriv(sigmas[i] ), vp_snr_sqrt_reciprocal(sigmas[i] ), vp_snr_sqrt_reciprocal_deriv(sigmas[i] ), guidance, stochastic=True)
-            
+
             dt = (sigma_hat - sigmas[i]) 
             x = x + d_1 * dt + th.randn_like(x) *((dt).abs() ** 0.5)*gt2.sqrt()
             
@@ -387,7 +386,7 @@ def sample_heun(
             
             path.append(x.detach().cpu())
         else:
-            sigma_hat =  sigmas[i]
+            sigma_hat = sigmas[i]
         
         # heun step
         denoised = denoiser(x, sigma_hat * s_in, x_T)

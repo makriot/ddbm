@@ -98,6 +98,8 @@ def sample(args):
         dataloader = all_dataloaders[1]
     elif args.split == 'test':
         dataloader = all_dataloaders[2]
+    elif args.split == "real_train":
+        dataloader = all_dataloaders[0]
     else:
         raise NotImplementedError
     # args.num_samples = len(dataloader.dataset)
@@ -137,9 +139,9 @@ def sample(args):
             rho=args.rho,
             guidance=args.guidance
         )
-        # np_path = np.stack([p.cpu().numpy() for p in path])
-        # np.save(os.path.join(sample_dir, f"path.npz"), np_path)
-        # print(os.path.join(sample_dir, f"path.npz"))
+        np_path = np.stack([p.cpu().numpy() for p in path])
+        np.save(os.path.join(sample_dir, f"path.npz"), np_path)
+        print("Saved path at:", os.path.join(sample_dir, f"path.npz"))
         sample = (sample + 1) / 2
         # sample = de_normalize_a(sample)
         sample = sample * 255.0
@@ -164,7 +166,7 @@ def sample(args):
             vutils.save_image(sample.permute(0,3,1,2)[:num_display].float(), f'{sample_dir}/sample_{i}.png', normalize=True,  nrow=int(np.sqrt(num_display)))
             if x0 is not None:
                 vutils.save_image(x0_image[:num_display], f'{sample_dir}/x_{i}.png',nrow=int(np.sqrt(num_display)))
-            vutils.save_image(y0_image[:num_display]/2+0.5, f'{sample_dir}/y_{i}.png',nrow=int(np.sqrt(num_display)))
+            vutils.save_image(y0_image[:num_display], f'{sample_dir}/y_{i}.png',nrow=int(np.sqrt(num_display)))
             
             
         all_images.append(gathered_samples.detach().cpu().numpy())
@@ -226,17 +228,17 @@ def model_and_diffusion_defaults():
 def create_argparser():
     defaults = dict(
         data_dir="data", ## only used in bridge
-        dataset='maps',
+        dataset='cityscapes',  # maps or cityscapes
         clip_denoised=True,
         num_samples=50,
         batch_size=8,
         sampler="heun",
-        split='train',  # val
-        churn_step_ratio=0.33,  # 0.0
+        split='real_train',  # val
+        churn_step_ratio=0.0,  # 0.0
         rho=7.0,
         steps=40,
-        model_path="./workdir/3_maps/ema_0.9999_005000.pt",
-        exp="3_maps",
+        model_path="./workdir/2_real2cartoon/ema_0.9999_032000.pt",
+        exp="2_real2cartoon",
         seed=42,
         ts="",
         upscale=False,

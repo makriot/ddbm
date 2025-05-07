@@ -33,7 +33,8 @@ def get_channel_statistics(dataset):
     return channel_mean, channel_std
 
 
-def get_transforms(mean, std, img_size=256):
+# def get_transforms(mean, std, img_size=256):
+def get_transforms(img_size=256):
     train_transform = tr.Compose([
         tr.ToPILImage(),
         tr.Resize(img_size),
@@ -158,12 +159,8 @@ def load_data(
         val_b = ImagesDataset(os.path.join(target_dir, "val"), mode="b")
     )
 
-    print("Precomputing statistics (mean, std)...")
-    channel_mean_a, channel_std_a = get_channel_statistics(ds.train_a)
-    channel_mean_b, channel_std_b = get_channel_statistics(ds.train_b)
-
-    train_transform_a, test_transform_a, de_normalize_a = get_transforms(channel_mean_a, channel_std_a, img_size=image_size)
-    train_transform_b, test_transform_b, de_normalize_b = get_transforms(channel_mean_b, channel_std_b, img_size=image_size)
+    train_transform_a, test_transform_a, de_normalize_a = get_transforms(img_size=image_size)
+    train_transform_b, test_transform_b, de_normalize_b = get_transforms(img_size=image_size)
 
     ds_pairs = PairedDatasetsClass(
         train = PairedDataset(os.path.join(target_dir, "train"),

@@ -1,0 +1,13 @@
+torch>=2.7.0
+torchvision>=0.22.0
+tqdm
+triton>=3.3.0
+wandb
+flash-attn
+numpy
+matplotlib
+opencv-python
+pillow
+blobfile
+piq
+scipy
