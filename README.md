@@ -23,7 +23,7 @@ Code is based on the official implementation: [ddbm](https://github.com/alexzhou
 
 Code is reorganized to work with custom datasets. As an example, [pix2pix](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/datasets.md) datasets are utilized for trainings and samplings.
 
-Dataset prepearing is at `pix2pix_utils.py`
+Dataset preparations are at `pix2pix_utils.py`
 
 # Train & sample
 
